@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Azan">
+<meta name="theme-color" content="#0a1628">
+<title>Ramadan Azan</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg-deep:#0a1628;--bg-card:rgba(15,30,56,0.85);--bg-card-hover:rgba(20,40,72,0.9);
+  --gold:#d4a853;--gold-light:#f0d68a;--gold-dim:rgba(212,168,83,0.15);
+  --teal:#2ec4b6;--teal-dim:rgba(46,196,182,0.12);
+  --text-primary:#e8e0d4;--text-secondary:#8a9bb5;--text-muted:#5a6a80;
+  --danger:#e74c3c;--success:#27ae60;
+  --radius:16px;--radius-sm:10px;
+  --font-arabic:'Amiri',serif;--font-ui:'Outfit',sans-serif;
+  --safe-top:env(safe-area-inset-top,0px);--safe-bottom:env(safe-area-inset-bottom,0px);
+}
+html{font-size:16px;-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--font-ui);color:var(--text-primary);background:var(--bg-deep);
+  min-height:100vh;min-height:100dvh;overflow-x:hidden;
+  padding-top:var(--safe-top);padding-bottom:var(--safe-bottom);
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:-2;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 10%,rgba(212,168,83,0.06),transparent),
+    radial-gradient(ellipse 60% 60% at 80% 80%,rgba(46,196,182,0.04),transparent),
+    var(--bg-deep);
+}
+
+/* Stars background */
+.stars{position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.stars span{
+  position:absolute;width:2px;height:2px;background:#fff;border-radius:50%;
+  animation:twinkle 3s infinite alternate;
+}
+@keyframes twinkle{0%{opacity:0.1}100%{opacity:0.7}}
+
+/* Layout */
+.app{max-width:480px;margin:0 auto;padding:20px 16px 100px}
+
+/* Header */
+.header{text-align:center;padding:24px 0 16px}
+.header .bismillah{
+  font-family:var(--font-arabic);font-size:1.5rem;color:var(--gold);
+  opacity:0.9;margin-bottom:8px;line-height:1.8;
+}
+.header h1{
+  font-family:var(--font-ui);font-weight:700;font-size:1.75rem;
+  background:linear-gradient(135deg,var(--gold-light),var(--gold),var(--teal));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;letter-spacing:-0.5px;
+}
+.header .subtitle{color:var(--text-secondary);font-size:0.85rem;margin-top:4px;font-weight:300}
+
+/* Crescent moon icon */
+.moon-icon{
+  width:48px;height:48px;margin:0 auto 12px;position:relative;
+}
+.moon-icon::before{
+  content:'';position:absolute;inset:0;border-radius:50%;
+  background:var(--gold);box-shadow:0 0 20px rgba(212,168,83,0.4);
+}
+.moon-icon::after{
+  content:'';position:absolute;top:-4px;right:-2px;width:38px;height:38px;
+  border-radius:50%;background:var(--bg-deep);
+}
+
+/* Cards */
+.card{
+  background:var(--bg-card);border:1px solid rgba(212,168,83,0.1);
+  border-radius:var(--radius);padding:20px;margin-bottom:16px;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  transition:all 0.3s ease;
+}
+.card:hover{border-color:rgba(212,168,83,0.2)}
+.card-title{
+  font-size:0.75rem;font-weight:600;text-transform:uppercase;
+  letter-spacing:1.5px;color:var(--gold);margin-bottom:14px;
+  display:flex;align-items:center;gap:8px;
+}
+.card-title svg{width:16px;height:16px;fill:var(--gold)}
+
+/* Today's times */
+.today-display{text-align:center;padding:8px 0}
+.today-date{
+  font-family:var(--font-arabic);font-size:1.1rem;color:var(--gold-light);margin-bottom:4px
+}
+.today-gregorian{font-size:0.8rem;color:var(--text-secondary);margin-bottom:20px}
+.time-row{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  margin-bottom:16px;
+}
+.time-block{
+  flex:1;text-align:center;padding:16px 12px;
+  border-radius:var(--radius-sm);position:relative;overflow:hidden;
+}
+.time-block.fajr{background:linear-gradient(135deg,rgba(46,196,182,0.12),rgba(46,196,182,0.04))}
+.time-block.maghrib{background:linear-gradient(135deg,rgba(212,168,83,0.12),rgba(212,168,83,0.04))}
+.time-block .label{
+  font-size:0.7rem;text-transform:uppercase;letter-spacing:1.2px;
+  color:var(--text-secondary);margin-bottom:6px;font-weight:500;
+}
+.time-block .time{font-size:1.6rem;font-weight:700;letter-spacing:-0.5px}
+.time-block.fajr .time{color:var(--teal)}
+.time-block.maghrib .time{color:var(--gold)}
+.time-block .sublabel{font-size:0.65rem;color:var(--text-muted);margin-top:4px}
+
+.countdown{
+  text-align:center;padding:12px;border-radius:var(--radius-sm);
+  background:rgba(212,168,83,0.06);margin-top:4px;
+}
+.countdown .label{font-size:0.7rem;color:var(--text-secondary);margin-bottom:4px;text-transform:uppercase;letter-spacing:1px}
+.countdown .value{font-size:1.2rem;font-weight:600;color:var(--gold-light);font-variant-numeric:tabular-nums}
+
+/* Status badges */
+.status{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:6px 14px;border-radius:20px;font-size:0.75rem;font-weight:500;
+}
+.status.active{background:rgba(39,174,96,0.15);color:var(--success)}
+.status.active::before{
+  content:'';width:6px;height:6px;border-radius:50%;background:var(--success);
+  animation:pulse-dot 2s infinite;
+}
+.status.inactive{background:rgba(138,155,181,0.1);color:var(--text-secondary)}
+@keyframes pulse-dot{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* Buttons */
+.btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:14px 20px;border-radius:var(--radius-sm);
+  font-family:var(--font-ui);font-size:0.85rem;font-weight:600;
+  border:none;cursor:pointer;transition:all 0.25s ease;
+  -webkit-tap-highlight-color:transparent;
+}
+.btn-primary{
+  background:linear-gradient(135deg,var(--gold),#c4963f);color:var(--bg-deep);
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(212,168,83,0.3)}
+.btn-primary:active{transform:translateY(0)}
+.btn-outline{
+  background:transparent;border:1.5px solid rgba(212,168,83,0.3);color:var(--gold);
+}
+.btn-outline:hover{background:var(--gold-dim);border-color:var(--gold)}
+.btn-danger-outline{
+  background:transparent;border:1.5px solid rgba(231,76,60,0.3);color:var(--danger);
+}
+.btn-danger-outline:hover{background:rgba(231,76,60,0.1)}
+.btn-sm{padding:10px 16px;font-size:0.8rem}
+.btn svg{width:16px;height:16px}
+
+/* Upload zone */
+.upload-zone{
+  border:2px dashed rgba(212,168,83,0.25);border-radius:var(--radius);
+  padding:32px 20px;text-align:center;cursor:pointer;
+  transition:all 0.3s ease;
+}
+.upload-zone:hover,.upload-zone.dragover{
+  border-color:var(--gold);background:var(--gold-dim);
+}
+.upload-zone svg{width:40px;height:40px;fill:var(--gold);opacity:0.6;margin-bottom:12px}
+.upload-zone p{color:var(--text-secondary);font-size:0.85rem;line-height:1.5}
+.upload-zone .hint{font-size:0.7rem;color:var(--text-muted);margin-top:8px}
+
+/* Schedule list */
+.schedule-list{max-height:320px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:rgba(212,168,83,0.2) transparent}
+.schedule-list::-webkit-scrollbar{width:4px}
+.schedule-list::-webkit-scrollbar-thumb{background:rgba(212,168,83,0.2);border-radius:2px}
+.schedule-item{
+  display:grid;grid-template-columns:auto 1fr auto auto;align-items:center;gap:12px;
+  padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.04);
+  font-size:0.82rem;
+}
+.schedule-item:last-child{border-bottom:none}
+.schedule-item .day-num{
+  width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:0.7rem;font-weight:600;
+}
+.schedule-item .day-num.laylatul{
+  background:var(--gold-dim);color:var(--gold);border:1px solid rgba(212,168,83,0.3);
+}
+.schedule-item .day-num:not(.laylatul){background:rgba(255,255,255,0.04);color:var(--text-secondary)}
+.schedule-item .date-info{color:var(--text-secondary);font-size:0.78rem}
+.schedule-item .fajr-time{color:var(--teal);font-weight:500;font-variant-numeric:tabular-nums}
+.schedule-item .maghrib-time{color:var(--gold);font-weight:500;font-variant-numeric:tabular-nums}
+.schedule-item.today-row{
+  background:rgba(212,168,83,0.06);margin:0 -12px;padding:10px 12px;border-radius:8px;
+}
+
+/* Toggle */
+.toggle-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:12px 0;
+}
+.toggle-row .label{font-size:0.85rem;color:var(--text-primary)}
+.toggle-row .sublabel{font-size:0.72rem;color:var(--text-muted);margin-top:2px}
+.toggle{
+  width:48px;height:28px;border-radius:14px;position:relative;cursor:pointer;
+  background:rgba(255,255,255,0.1);transition:background 0.3s;
+  border:none;-webkit-tap-highlight-color:transparent;
+}
+.toggle.on{background:var(--gold)}
+.toggle::after{
+  content:'';position:absolute;top:3px;left:3px;width:22px;height:22px;
+  border-radius:50%;background:#fff;transition:transform 0.3s;
+}
+.toggle.on::after{transform:translateX(20px)}
+
+/* Azan file info */
+.file-info{
+  display:flex;align-items:center;gap:10px;padding:10px 14px;
+  background:rgba(255,255,255,0.03);border-radius:var(--radius-sm);
+  margin-top:10px;
+}
+.file-info .icon{width:32px;height:32px;border-radius:8px;background:var(--gold-dim);display:flex;align-items:center;justify-content:center}
+.file-info .icon svg{width:16px;height:16px;fill:var(--gold)}
+.file-info .details{flex:1}
+.file-info .name{font-size:0.8rem;color:var(--text-primary);font-weight:500}
+.file-info .size{font-size:0.7rem;color:var(--text-muted)}
+
+/* Notification bar */
+.notif{
+  position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-100px);
+  padding:12px 24px;border-radius:12px;font-size:0.82rem;font-weight:500;
+  z-index:1000;transition:transform 0.4s cubic-bezier(0.175,0.885,0.32,1.275);
+  max-width:90vw;text-align:center;
+}
+.notif.show{transform:translateX(-50%) translateY(0)}
+.notif.success{background:rgba(39,174,96,0.95);color:#fff}
+.notif.error{background:rgba(231,76,60,0.95);color:#fff}
+.notif.info{background:rgba(46,196,182,0.95);color:var(--bg-deep)}
+
+/* Azan playing overlay */
+.azan-overlay{
+  position:fixed;inset:0;z-index:999;background:rgba(10,22,40,0.97);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity 0.5s;
+}
+.azan-overlay.visible{opacity:1;pointer-events:all}
+.azan-overlay .rings{position:relative;width:200px;height:200px;margin-bottom:32px}
+.azan-overlay .ring{
+  position:absolute;inset:0;border-radius:50%;
+  border:2px solid var(--gold);opacity:0;
+  animation:ring-expand 3s infinite ease-out;
+}
+.azan-overlay .ring:nth-child(2){animation-delay:1s}
+.azan-overlay .ring:nth-child(3){animation-delay:2s}
+@keyframes ring-expand{
+  0%{transform:scale(0.5);opacity:0.8}
+  100%{transform:scale(1.5);opacity:0}
+}
+.azan-overlay .prayer-name{
+  font-family:var(--font-arabic);font-size:2.5rem;color:var(--gold-light);margin-bottom:8px;
+}
+.azan-overlay .prayer-time-display{font-size:1rem;color:var(--text-secondary);margin-bottom:32px}
+.azan-overlay .stop-btn{
+  padding:14px 40px;border-radius:30px;background:rgba(231,76,60,0.2);
+  border:1.5px solid var(--danger);color:var(--danger);font-family:var(--font-ui);
+  font-size:0.9rem;font-weight:600;cursor:pointer;transition:all 0.2s;
+}
+.azan-overlay .stop-btn:hover{background:rgba(231,76,60,0.3)}
+
+/* Welcome screen */
+.welcome{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:70vh;text-align:center;padding:20px;
+}
+.welcome h2{
+  font-family:var(--font-arabic);font-size:1.8rem;color:var(--gold-light);margin-bottom:8px;
+}
+.welcome p{color:var(--text-secondary);font-size:0.9rem;line-height:1.6;max-width:320px;margin-bottom:24px}
+
+/* Tab nav */
+.tab-nav{
+  position:fixed;bottom:0;left:0;right:0;z-index:100;
+  background:rgba(10,22,40,0.95);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-top:1px solid rgba(212,168,83,0.08);
+  display:flex;justify-content:center;gap:0;
+  padding:8px 16px calc(8px + var(--safe-bottom));
+  max-width:480px;margin:0 auto;
+}
+.tab-btn{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:8px 0;background:none;border:none;cursor:pointer;
+  color:var(--text-muted);transition:color 0.2s;
+  -webkit-tap-highlight-color:transparent;font-family:var(--font-ui);
+}
+.tab-btn.active{color:var(--gold)}
+.tab-btn svg{width:20px;height:20px;fill:currentColor}
+.tab-btn span{font-size:0.65rem;font-weight:500;letter-spacing:0.5px}
+
+/* Sections */
+.section{display:none}
+.section.active{display:block;animation:fadeIn 0.3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* Volume slider */
+.volume-slider{
+  -webkit-appearance:none;appearance:none;width:100%;height:4px;
+  border-radius:2px;background:rgba(255,255,255,0.1);outline:none;
+  margin:8px 0;
+}
+.volume-slider::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;border-radius:50%;
+  background:var(--gold);cursor:pointer;
+}
+
+/* Test button */
+.test-play{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 16px;border-radius:20px;font-size:0.78rem;
+  background:rgba(46,196,182,0.1);border:1px solid rgba(46,196,182,0.3);
+  color:var(--teal);cursor:pointer;font-family:var(--font-ui);font-weight:500;
+  transition:all 0.2s;
+}
+.test-play:hover{background:rgba(46,196,182,0.2)}
+
+/* Responsive */
+@media(max-width:380px){
+  .time-block .time{font-size:1.3rem}
+  .header h1{font-size:1.5rem}
+}
+</style>
+</head>
+<body>
+
+<!-- Stars -->
+<div class="stars" id="stars"></div>
+
+<!-- Notification -->
+<div class="notif" id="notif"></div>
+
+<!-- Azan Overlay -->
+<div class="azan-overlay" id="azanOverlay">
+  <div class="rings"><div class="ring"></div><div class="ring"></div><div class="ring"></div></div>
+  <div class="prayer-name" id="azanPrayerName">Fajr</div>
+  <div class="prayer-time-display" id="azanTimeDisplay">Azan is playing...</div>
+  <button class="stop-btn" onclick="stopAzan()">Stop Azan</button>
+</div>
+
+<div class="app">
+  <!-- Header -->
+  <div class="header">
+    <div class="moon-icon"></div>
+    <div class="bismillah">بسم الله الرحمن الرحيم</div>
+    <h1>Ramadan Azan</h1>
+    <div class="subtitle">Franklin, Tennessee</div>
+  </div>
+
+  <!-- Welcome / No Calendar -->
+  <div class="section" id="welcomeSection">
+    <div class="welcome">
+      <h2>رمضان مبارك</h2>
+      <p>Upload your Ramadan calendar PDF to get started. The app will read your prayer times and play the Azan automatically at Fajr and Maghrib.</p>
+      <button class="btn btn-primary" onclick="document.getElementById('calendarInput').click()">
+        <svg viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M13.5,16V19H10.5V16H8L12,12L16,16H13.5M13,9V3.5L18.5,9H13Z" fill="currentColor"/></svg>
+        Upload Calendar PDF
+      </button>
+      <input type="file" id="calendarInput" accept=".pdf" style="display:none" onchange="handleCalendarUpload(event)">
+    </div>
+  </div>
+
+  <!-- HOME Section -->
+  <div class="section" id="homeSection">
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M16.2,16.2L11,13V7H12.5V12.2L17,14.9L16.2,16.2Z"/></svg>
+        Today's Prayer Times
+      </div>
+      <div class="today-display">
+        <div class="today-date" id="todayHijri"></div>
+        <div class="today-gregorian" id="todayGreg"></div>
+        <div class="time-row">
+          <div class="time-block fajr">
+            <div class="label">Fajr / Suhoor</div>
+            <div class="time" id="todayFajr">--:--</div>
+            <div class="sublabel">Suhoor ends</div>
+          </div>
+          <div class="time-block maghrib">
+            <div class="label">Maghrib / Iftar</div>
+            <div class="time" id="todayMaghrib">--:--</div>
+            <div class="sublabel">Iftar time</div>
+          </div>
+        </div>
+        <div class="countdown">
+          <div class="label" id="countdownLabel">Next prayer in</div>
+          <div class="value" id="countdownValue">--:--:--</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><path d="M12,1A3,3 0 0,1 15,4V8A3,3 0 0,1 9,8V4A3,3 0 0,1 12,1M12,14C8.13,14 5,12.21 5,10V8H19V10C19,12.21 15.87,14 12,14M12,16C16.42,16 20,17.79 20,20V22H4V20C4,17.79 7.58,16 12,16Z"/></svg>
+        Azan Status
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <span class="status" id="azanStatus"><span>Inactive</span></span>
+        </div>
+        <button class="test-play" onclick="testAzan()">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8,5.14V19.14L19,12.14L8,5.14Z"/></svg>
+          Test Azan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCHEDULE Section -->
+  <div class="section" id="scheduleSection">
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1"/></svg>
+        Full Ramadan Schedule
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:12px;padding:0 0 8px;border-bottom:1px solid rgba(255,255,255,0.06)">
+        <span style="font-size:0.7rem;color:var(--text-muted)">Day / Date</span>
+        <div style="display:flex;gap:24px">
+          <span style="font-size:0.7rem;color:var(--teal)">Fajr</span>
+          <span style="font-size:0.7rem;color:var(--gold)">Maghrib</span>
+        </div>
+      </div>
+      <div class="schedule-list" id="scheduleList"></div>
+    </div>
+    <div style="text-align:center;padding:8px;font-size:0.7rem;color:var(--text-muted)">
+      ☆ = Odd nights of last 10 days (potential Laylat al-Qadr)
+    </div>
+  </div>
+
+  <!-- SETTINGS Section -->
+  <div class="section" id="settingsSection">
+    <!-- Azan Toggle -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><path d="M14,3.23V5.29C16.89,6.15 19,8.83 19,12C19,15.17 16.89,17.84 14,18.7V20.77C18,19.86 21,16.28 21,12C21,7.72 18,4.14 14,3.23M16.5,12C16.5,10.23 15.5,8.71 14,7.97V16C15.5,15.29 16.5,13.76 16.5,12M3,9V15H7L12,20V4L7,9H3Z"/></svg>
+        Azan Settings
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="label">Enable Azan at Fajr</div>
+          <div class="sublabel">Plays Azan at Suhoor end time</div>
+        </div>
+        <button class="toggle on" id="toggleFajr" onclick="toggleSetting('fajr')"></button>
+      </div>
+      <div class="toggle-row">
+        <div>
+          <div class="label">Enable Azan at Maghrib</div>
+          <div class="sublabel">Plays Azan at Iftar time</div>
+        </div>
+        <button class="toggle on" id="toggleMaghrib" onclick="toggleSetting('maghrib')"></button>
+      </div>
+      <div class="toggle-row" style="border-top:1px solid rgba(255,255,255,0.04);padding-top:14px">
+        <div>
+          <div class="label">Volume</div>
+        </div>
+        <div style="width:120px">
+          <input type="range" class="volume-slider" id="volumeSlider" min="0" max="100" value="80" oninput="setVolume(this.value)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Custom Azan Upload -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><path d="M12,3V12.26C11.5,12.09 11,12 10.5,12A4.5,4.5 0 1,0 15,16.5V6H19V3H12Z"/></svg>
+        Custom Azan Audio
+      </div>
+      <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">Upload your preferred Azan MP3 file. A default Azan will play if none is uploaded.</p>
+      <div class="upload-zone" id="azanUploadZone" onclick="document.getElementById('azanInput').click()">
+        <svg viewBox="0 0 24 24"><path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/></svg>
+        <p>Tap to upload Azan MP3</p>
+        <div class="hint">Supports MP3, WAV, OGG, M4A</div>
+      </div>
+      <input type="file" id="azanInput" accept="audio/*" style="display:none" onchange="handleAzanUpload(event)">
+      <div id="azanFileInfo" style="display:none"></div>
+      <div style="margin-top:10px;display:flex;gap:8px" id="azanActions" style="display:none">
+        <button class="btn btn-outline btn-sm" onclick="testAzan()" style="flex:1">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8,5.14V19.14L19,12.14L8,5.14Z"/></svg>
+          Preview
+        </button>
+        <button class="btn btn-danger-outline btn-sm" onclick="removeAzan()" style="flex:1">Remove</button>
+      </div>
+    </div>
+
+    <!-- Calendar Management -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1"/></svg>
+        Calendar Management
+      </div>
+      <div id="currentCalendarInfo"></div>
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('newCalendarInput').click()" style="margin-top:12px">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/></svg>
+        Upload New Calendar
+      </button>
+      <input type="file" id="newCalendarInput" accept=".pdf" style="display:none" onchange="handleCalendarUpload(event)">
+    </div>
+
+    <!-- About -->
+    <div class="card" style="text-align:center;padding:16px">
+      <p style="font-family:var(--font-arabic);color:var(--gold);font-size:1.1rem;margin-bottom:4px">رمضان مبارك</p>
+      <p style="font-size:0.75rem;color:var(--text-muted)">Ramadan Azan App • Franklin, TN<br>ISNA Calculation Method</p>
+    </div>
+  </div>
+</div>
+
+<!-- Tab Navigation -->
+<div class="tab-nav">
+  <button class="tab-btn active" onclick="showSection('home')" id="tabHome">
+    <svg viewBox="0 0 24 24"><path d="M10,20V14H14V20H19V12H22L12,3L2,12H5V20H10Z"/></svg>
+    <span>Home</span>
+  </button>
+  <button class="tab-btn" onclick="showSection('schedule')" id="tabSchedule">
+    <svg viewBox="0 0 24 24"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M7,10H9V12H7V10M11,10H13V12H11V10M15,10H17V12H15V10Z"/></svg>
+    <span>Schedule</span>
+  </button>
+  <button class="tab-btn" onclick="showSection('settings')" id="tabSettings">
+    <svg viewBox="0 0 24 24"><path d="M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.04 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.04 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z"/></svg>
+    <span>Settings</span>
+  </button>
+</div>
+
+<!-- PDF.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
+<script>
+// ===== APP STATE =====
+const APP_KEY = 'ramadan_azan_app';
+let state = {
+  calendar: null,        // [{day, date, dayName, hijriDate, fajr, maghrib, fastingHours, year}]
+  calendarName: null,
+  azanEnabled: { fajr: true, maghrib: true },
+  volume: 0.8,
+  customAzanData: null,  // base64 audio
+  customAzanName: null,
+};
+
+let audioContext = null;
+let countdownInterval = null;
+let checkerInterval = null;
+let lastFiredKey = null; // prevent double-firing
+
+// ===== PERSISTENCE =====
+function saveState() {
+  try {
+    const toSave = { ...state };
+    // Store audio separately to avoid quota issues
+    if (state.customAzanData) {
+      try { localStorage.setItem(APP_KEY + '_audio', state.customAzanData); } catch(e) {}
+    }
+    toSave.customAzanData = null;
+    localStorage.setItem(APP_KEY, JSON.stringify(toSave));
+  } catch(e) { console.warn('Save failed:', e); }
+}
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem(APP_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      state = { ...state, ...parsed };
+      const audio = localStorage.getItem(APP_KEY + '_audio');
+      if (audio) state.customAzanData = audio;
+    }
+  } catch(e) { console.warn('Load failed:', e); }
+}
+
+// ===== STARS BACKGROUND =====
+function createStars() {
+  const container = document.getElementById('stars');
+  for (let i = 0; i < 60; i++) {
+    const s = document.createElement('span');
+    s.style.left = Math.random() * 100 + '%';
+    s.style.top = Math.random() * 100 + '%';
+    s.style.animationDelay = Math.random() * 3 + 's';
+    s.style.width = s.style.height = (Math.random() * 2 + 1) + 'px';
+    container.appendChild(s);
+  }
+}
+
+// ===== NOTIFICATIONS =====
+function notify(msg, type = 'success') {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.className = 'notif ' + type + ' show';
+  setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ===== NAVIGATION =====
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  
+  if (!state.calendar) {
+    document.getElementById('welcomeSection').classList.add('active');
+    return;
+  }
+  
+  document.getElementById(name + 'Section').classList.add('active');
+  document.getElementById('tab' + name.charAt(0).toUpperCase() + name.slice(1)).classList.add('active');
+}
+
+// ===== PDF PARSING =====
+async function handleCalendarUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  notify('Parsing calendar...', 'info');
+  
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    
+    const allEntries = [];
+    
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const textContent = await page.getTextContent();
+      const text = textContent.items.map(item => item.str).join(' ');
+      
+      // Match patterns like: 1 Feb 18 Wed 1 Ramadan 5:20 AM 5:32 PM 12h 12m
+      const regex = /(\d{1,2})\s+(Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|Jan)\s+(\d{1,2})\s+(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\s+(\d{1,2}\s+Ramadan)\s+(\d{1,2}:\d{2}\s*[AP]M)\s+(\d{1,2}:\d{2}\s*[AP]M)\s+(\d{1,2}h\s*\d{1,2}m)/gi;
+      
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        const monthStr = match[2];
+        const dayOfMonth = parseInt(match[3]);
+        const year = 2026; // from the PDF context
+        const monthMap = {Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11};
+        const monthNum = monthMap[monthStr];
+        
+        allEntries.push({
+          day: parseInt(match[1]),
+          date: `${monthStr} ${dayOfMonth}`,
+          fullDate: new Date(year, monthNum, dayOfMonth),
+          dayName: match[4],
+          hijriDate: match[5].trim(),
+          fajr: match[6].trim(),
+          maghrib: match[7].trim(),
+          fastingHours: match[8].trim(),
+          year: year
+        });
+      }
+    }
+    
+    if (allEntries.length === 0) {
+      notify('Could not parse prayer times from PDF. Please check the format.', 'error');
+      return;
+    }
+    
+    // Sort by day number
+    allEntries.sort((a, b) => a.day - b.day);
+    
+    state.calendar = allEntries;
+    state.calendarName = file.name;
+    saveState();
+    
+    notify(`Calendar loaded! ${allEntries.length} days found.`, 'success');
+    renderApp();
+    showSection('home');
+    startChecker();
+    
+  } catch(e) {
+    console.error(e);
+    notify('Error parsing PDF: ' + e.message, 'error');
+  }
+  
+  event.target.value = '';
+}
+
+// ===== AZAN UPLOAD =====
+async function handleAzanUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    state.customAzanData = e.target.result;
+    state.customAzanName = file.name;
+    saveState();
+    renderAzanInfo();
+    notify('Azan audio uploaded!', 'success');
+  };
+  reader.readAsDataURL(file);
+  event.target.value = '';
+}
+
+function removeAzan() {
+  state.customAzanData = null;
+  state.customAzanName = null;
+  localStorage.removeItem(APP_KEY + '_audio');
+  saveState();
+  renderAzanInfo();
+  notify('Custom Azan removed', 'info');
+}
+
+function renderAzanInfo() {
+  const infoEl = document.getElementById('azanFileInfo');
+  const actionsEl = document.getElementById('azanActions');
+  
+  if (state.customAzanName) {
+    infoEl.style.display = 'block';
+    infoEl.innerHTML = `
+      <div class="file-info">
+        <div class="icon"><svg viewBox="0 0 24 24"><path d="M12,3V12.26C11.5,12.09 11,12 10.5,12A4.5,4.5 0 1,0 15,16.5V6H19V3H12Z"/></svg></div>
+        <div class="details">
+          <div class="name">${state.customAzanName}</div>
+          <div class="size">Custom Azan</div>
+        </div>
+      </div>`;
+    actionsEl.style.display = 'flex';
+  } else {
+    infoEl.style.display = 'none';
+    actionsEl.style.display = 'none';
+  }
+}
+
+// ===== AUDIO PLAYBACK =====
+// We track the active AudioContext and source so stopAzan() can kill them
+let _activeCtx = null;
+let _activeSource = null;
+let _activeHtmlAudio = null;
+let _manuallyStopped = false;
+
+function playAzan(prayerName) {
+  // Stop anything already playing
+  stopAzanInternal();
+  _manuallyStopped = false;
+
+  const overlay = document.getElementById('azanOverlay');
+  document.getElementById('azanPrayerName').textContent = prayerName === 'fajr' ? 'أذان الفجر' : 'أذان المغرب';
+  document.getElementById('azanTimeDisplay').textContent = prayerName === 'fajr' ? 'Fajr Azan — Suhoor has ended' : 'Maghrib Azan — It\'s time for Iftar!';
+  overlay.classList.add('visible');
+
+  if (state.customAzanData) {
+    playCustomAzan();
+  } else {
+    playGeneratedAzan();
+  }
+}
+
+// --- Play user-uploaded MP3/audio via <audio> element ---
+function playCustomAzan() {
+  try {
+    const audio = new Audio();
+    audio.volume = state.volume;
+
+    _activeHtmlAudio = audio;
+
+    // Use a flag scoped to this specific playback instance
+    // so that if stop is called, none of the callbacks fire
+    let cancelled = false;
+    _activeHtmlAudio._cancel = () => { cancelled = true; };
+
+    audio.addEventListener('canplaythrough', () => {
+      if (cancelled) return;
+      audio.play().catch(e => {
+        if (cancelled) return;
+        console.warn('Custom audio play blocked:', e);
+        notify('Tap anywhere first, then try again (browser requires interaction)', 'info');
+        document.getElementById('azanOverlay').classList.remove('visible');
+      });
+    }, { once: true });
+
+    audio.addEventListener('error', (e) => {
+      if (cancelled) return;
+      console.warn('Custom audio load error:', e);
+      notify('Could not play custom Azan — falling back to built-in', 'info');
+      playGeneratedAzan();
+    }, { once: true });
+
+    audio.addEventListener('ended', () => {
+      if (cancelled) return;
+      document.getElementById('azanOverlay').classList.remove('visible');
+    }, { once: true });
+
+    audio.src = state.customAzanData;
+    audio.load();
+  } catch (e) {
+    if (_manuallyStopped) return;
+    console.warn('Custom audio setup error:', e);
+    playGeneratedAzan();
+  }
+}
+
+// --- Generate a beautiful Azan-like melodic call using Web Audio API ---
+// This is a synthesized "call to prayer" melody in Hijaz/Bayati scale
+function playGeneratedAzan() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    _activeCtx = ctx;
+
+    // Hijaz-ish scale frequencies (Middle Eastern melodic feel)
+    // D4, Eb4, F#4, G4, A4, Bb4, C5, D5
+    const scale = [293.66, 311.13, 369.99, 392.00, 440.00, 466.16, 523.25, 587.33];
+
+    // Melody pattern: note index in scale, duration in seconds
+    // Simulates the rising and falling phrases of an Azan
+    const melody = [
+      // Allahu Akbar phrase 1
+      [4, 1.2], [5, 0.8], [4, 1.5], [3, 0.6], [4, 1.8], [-1, 0.6],
+      // Allahu Akbar phrase 2
+      [4, 1.0], [5, 1.0], [6, 0.8], [5, 0.6], [4, 2.0], [-1, 0.8],
+      // Ashhadu phrase (rising)
+      [3, 0.8], [4, 0.8], [5, 1.2], [6, 1.0], [7, 1.5], [-1, 0.5],
+      // Descending phrase
+      [7, 0.6], [6, 0.8], [5, 1.0], [4, 0.8], [3, 1.5], [-1, 0.6],
+      // Hayya phrase (urgent, higher)
+      [5, 0.6], [6, 0.8], [7, 1.0], [6, 0.6], [5, 0.8], [4, 1.5], [-1, 0.8],
+      // Final Allahu Akbar (settling down)
+      [4, 1.2], [3, 0.8], [2, 0.6], [1, 0.6], [0, 2.5], [-1, 0.5],
+      // La ilaha illa Allah (final, peaceful)
+      [0, 0.8], [1, 0.6], [2, 0.8], [3, 1.0], [4, 1.0], [3, 2.0],
+    ];
+
+    const masterGain = ctx.createGain();
+    masterGain.gain.value = state.volume * 0.6;
+    masterGain.connect(ctx.destination);
+
+    // Add a gentle reverb-like delay
+    const delay = ctx.createDelay(0.5);
+    delay.delayTime.value = 0.15;
+    const delayGain = ctx.createGain();
+    delayGain.gain.value = 0.2;
+    delay.connect(delayGain);
+    delayGain.connect(masterGain);
+
+    let time = ctx.currentTime + 0.1;
+    let totalDuration = 0;
+
+    melody.forEach(([noteIdx, dur]) => {
+      if (noteIdx === -1) {
+        // Rest / silence
+        time += dur;
+        totalDuration += dur;
+        return;
+      }
+
+      const freq = scale[noteIdx];
+
+      // Main tone (sine — pure, voice-like)
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sine';
+      osc1.frequency.value = freq;
+
+      // Second harmonic for richness
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.value = freq * 2.0;
+
+      // Slight vibrato for vocal quality
+      const vibrato = ctx.createOscillator();
+      vibrato.type = 'sine';
+      vibrato.frequency.value = 5.5; // vibrato speed
+      const vibratoGain = ctx.createGain();
+      vibratoGain.gain.value = freq * 0.008; // subtle pitch wobble
+      vibrato.connect(vibratoGain);
+      vibratoGain.connect(osc1.frequency);
+
+      // Envelope
+      const env = ctx.createGain();
+      env.gain.setValueAtTime(0, time);
+      env.gain.linearRampToValueAtTime(0.35, time + 0.08);  // attack
+      env.gain.linearRampToValueAtTime(0.28, time + dur * 0.3); // sustain
+      env.gain.linearRampToValueAtTime(0, time + dur - 0.05); // release
+
+      const env2 = ctx.createGain();
+      env2.gain.setValueAtTime(0, time);
+      env2.gain.linearRampToValueAtTime(0.08, time + 0.1);
+      env2.gain.linearRampToValueAtTime(0, time + dur - 0.05);
+
+      osc1.connect(env);
+      osc2.connect(env2);
+      env.connect(masterGain);
+      env.connect(delay);
+      env2.connect(masterGain);
+
+      osc1.start(time);
+      osc2.start(time);
+      vibrato.start(time);
+      osc1.stop(time + dur);
+      osc2.stop(time + dur);
+      vibrato.stop(time + dur);
+
+      time += dur;
+      totalDuration += dur;
+    });
+
+    // Fade out master at the end
+    masterGain.gain.setValueAtTime(state.volume * 0.6, time - 0.5);
+    masterGain.gain.linearRampToValueAtTime(0, time + 1.0);
+
+    // Close overlay when done
+    _activeSource = { stop: () => {} }; // placeholder
+    setTimeout(() => {
+      if (_activeCtx === ctx) {
+        document.getElementById('azanOverlay').classList.remove('visible');
+        try { ctx.close(); } catch(e) {}
+        _activeCtx = null;
+      }
+    }, (totalDuration + 2) * 1000);
+
+  } catch (e) {
+    console.error('Web Audio error:', e);
+    notify('Audio playback failed: ' + e.message, 'error');
+    document.getElementById('azanOverlay').classList.remove('visible');
+  }
+}
+
+function stopAzanInternal() {
+  _manuallyStopped = true;
+  if (_activeHtmlAudio) {
+    // Cancel all pending callbacks FIRST
+    if (_activeHtmlAudio._cancel) _activeHtmlAudio._cancel();
+    // Just pause — do NOT clear src or call load(), that triggers the error event
+    try { _activeHtmlAudio.pause(); } catch(e) {}
+    _activeHtmlAudio = null;
+  }
+  if (_activeCtx) {
+    try { _activeCtx.close(); } catch(e) {}
+    _activeCtx = null;
+  }
+  _activeSource = null;
+}
+
+function stopAzan() {
+  stopAzanInternal();
+  document.getElementById('azanOverlay').classList.remove('visible');
+}
+
+function testAzan() {
+  playAzan('fajr');
+}
+
+// ===== SETTINGS =====
+function toggleSetting(type) {
+  state.azanEnabled[type] = !state.azanEnabled[type];
+  const btn = document.getElementById('toggle' + type.charAt(0).toUpperCase() + type.slice(1));
+  btn.classList.toggle('on', state.azanEnabled[type]);
+  saveState();
+}
+
+function setVolume(val) {
+  state.volume = val / 100;
+  saveState();
+}
+
+// ===== TIME UTILITIES =====
+function parseTimeToMinutes(timeStr) {
+  // "5:20 AM" -> minutes since midnight
+  const match = timeStr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (!match) return 0;
+  let h = parseInt(match[1]);
+  const m = parseInt(match[2]);
+  const ampm = match[3].toUpperCase();
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return h * 60 + m;
+}
+
+function getTodayEntry() {
+  if (!state.calendar) return null;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  
+  return state.calendar.find(entry => {
+    const entryDate = new Date(entry.fullDate);
+    return entryDate.getFullYear() === today.getFullYear() &&
+           entryDate.getMonth() === today.getMonth() &&
+           entryDate.getDate() === today.getDate();
+  });
+}
+
+// ===== COUNTDOWN & CHECKER =====
+function updateCountdown() {
+  const entry = getTodayEntry();
+  if (!entry) {
+    document.getElementById('countdownValue').textContent = 'No data for today';
+    document.getElementById('countdownLabel').textContent = 'Status';
+    return;
+  }
+  
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const nowSecs = nowMins * 60 + now.getSeconds();
+  
+  const fajrMins = parseTimeToMinutes(entry.fajr);
+  const maghribMins = parseTimeToMinutes(entry.maghrib);
+  
+  let targetMins, targetLabel;
+  
+  if (nowMins < fajrMins) {
+    targetMins = fajrMins;
+    targetLabel = 'Fajr Azan in';
+  } else if (nowMins < maghribMins) {
+    targetMins = maghribMins;
+    targetLabel = 'Maghrib Azan in';
+  } else {
+    // After Maghrib
+    document.getElementById('countdownValue').textContent = 'الحمد لله';
+    document.getElementById('countdownLabel').textContent = 'Fasting complete for today';
+    return;
+  }
+  
+  const targetSecs = targetMins * 60;
+  let diff = targetSecs - nowSecs;
+  if (diff < 0) diff = 0;
+  
+  const h = Math.floor(diff / 3600);
+  const m = Math.floor((diff % 3600) / 60);
+  const s = diff % 60;
+  
+  document.getElementById('countdownValue').textContent = 
+    `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  document.getElementById('countdownLabel').textContent = targetLabel;
+}
+
+function startChecker() {
+  if (checkerInterval) clearInterval(checkerInterval);
+  if (countdownInterval) clearInterval(countdownInterval);
+  
+  countdownInterval = setInterval(updateCountdown, 1000);
+  
+  // Check every 30 seconds if it's time to play Azan
+  checkerInterval = setInterval(() => {
+    const entry = getTodayEntry();
+    if (!entry) return;
+    
+    const now = new Date();
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+    
+    const fajrMins = parseTimeToMinutes(entry.fajr);
+    const maghribMins = parseTimeToMinutes(entry.maghrib);
+    
+    // Fire if within 1 minute of prayer time
+    if (state.azanEnabled.fajr && Math.abs(nowMins - fajrMins) === 0) {
+      const key = todayKey + '-fajr';
+      if (lastFiredKey !== key) {
+        lastFiredKey = key;
+        playAzan('fajr');
+        updateStatus(true);
+      }
+    }
+    
+    if (state.azanEnabled.maghrib && Math.abs(nowMins - maghribMins) === 0) {
+      const key = todayKey + '-maghrib';
+      if (lastFiredKey !== key) {
+        lastFiredKey = key;
+        playAzan('maghrib');
+        updateStatus(true);
+      }
+    }
+  }, 15000); // check every 15 seconds
+  
+  updateStatus(state.azanEnabled.fajr || state.azanEnabled.maghrib);
+  updateCountdown();
+}
+
+function updateStatus(active) {
+  const el = document.getElementById('azanStatus');
+  if (active && state.calendar) {
+    el.className = 'status active';
+    el.innerHTML = '<span>Monitoring prayer times</span>';
+  } else {
+    el.className = 'status inactive';
+    el.innerHTML = '<span>Inactive</span>';
+  }
+}
+
+// ===== RENDER =====
+function renderApp() {
+  if (!state.calendar) {
+    showSection('welcome');
+    return;
+  }
+  
+  // Today's info
+  const entry = getTodayEntry();
+  if (entry) {
+    document.getElementById('todayHijri').textContent = entry.hijriDate + ' ١٤٤٧';
+    document.getElementById('todayGreg').textContent = `${entry.dayName}, ${entry.date}, ${entry.year}`;
+    document.getElementById('todayFajr').textContent = entry.fajr;
+    document.getElementById('todayMaghrib').textContent = entry.maghrib;
+  } else {
+    document.getElementById('todayHijri').textContent = 'Ramadan 1447 AH';
+    document.getElementById('todayGreg').textContent = 'No entry for today — check your calendar dates';
+    document.getElementById('todayFajr').textContent = '--:--';
+    document.getElementById('todayMaghrib').textContent = '--:--';
+  }
+  
+  // Schedule list
+  const listEl = document.getElementById('scheduleList');
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+  const oddLast10 = [21, 23, 25, 27, 29];
+  
+  listEl.innerHTML = state.calendar.map(e => {
+    const eDate = new Date(e.fullDate);
+    const eDateStr = `${eDate.getFullYear()}-${eDate.getMonth()}-${eDate.getDate()}`;
+    const isToday = eDateStr === todayStr;
+    const isLaylatul = oddLast10.includes(e.day);
+    
+    return `<div class="schedule-item ${isToday ? 'today-row' : ''}">
+      <div class="day-num ${isLaylatul ? 'laylatul' : ''}">${e.day}</div>
+      <div class="date-info">${e.dayName}, ${e.date}</div>
+      <div class="fajr-time">${e.fajr}</div>
+      <div class="maghrib-time">${e.maghrib}</div>
+    </div>`;
+  }).join('');
+  
+  // Calendar info
+  document.getElementById('currentCalendarInfo').innerHTML = `
+    <div class="file-info">
+      <div class="icon"><svg viewBox="0 0 24 24"><path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M13,9V3.5L18.5,9H13Z" fill="var(--gold)"/></svg></div>
+      <div class="details">
+        <div class="name">${state.calendarName || 'Calendar'}</div>
+        <div class="size">${state.calendar.length} days loaded • Ramadan ${state.calendar[0]?.year || ''}</div>
+      </div>
+    </div>`;
+  
+  // Toggles
+  document.getElementById('toggleFajr').classList.toggle('on', state.azanEnabled.fajr);
+  document.getElementById('toggleMaghrib').classList.toggle('on', state.azanEnabled.maghrib);
+  document.getElementById('volumeSlider').value = state.volume * 100;
+  
+  // Azan info
+  renderAzanInfo();
+  
+  // Location subtitle
+  if (state.calendar.length > 0) {
+    document.querySelector('.header .subtitle').textContent = 'Franklin, Tennessee • Ramadan ' + (state.calendar[0]?.year || '2026');
+  }
+}
+
+// ===== SERVICE WORKER REGISTRATION =====
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+
+// ===== WAKE LOCK (keep screen alive during Azan) =====
+let wakeLock = null;
+async function requestWakeLock() {
+  try {
+    if ('wakeLock' in navigator) {
+      wakeLock = await navigator.wakeLock.request('screen');
+    }
+  } catch(e) {}
+}
+
+// ===== INIT =====
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof pdfjsLib !== 'undefined') {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  
+  createStars();
+  loadState();
+  
+  // Restore calendar fullDate objects from serialized state
+  if (state.calendar) {
+    state.calendar = state.calendar.map(e => {
+      if (e.fullDate && typeof e.fullDate === 'string') {
+        e.fullDate = new Date(e.fullDate);
+      }
+      return e;
+    });
+  }
+  
+  renderApp();
+  
+  if (state.calendar) {
+    showSection('home');
+    startChecker();
+  } else {
+    showSection('welcome');
+  }
+  
+  // Drag and drop on azan upload zone
+  const zone = document.getElementById('azanUploadZone');
+  if (zone) {
+    zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      zone.classList.remove('dragover');
+      if (e.dataTransfer.files.length) {
+        const input = document.getElementById('azanInput');
+        input.files = e.dataTransfer.files;
+        handleAzanUpload({ target: input });
+      }
+    });
+  }
+  
+  requestWakeLock();
+});
+
+// Re-acquire wake lock when page becomes visible again
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    requestWakeLock();
+  }
+});
+</script>
+</body>
+</html>
