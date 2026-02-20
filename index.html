@@ -476,12 +476,12 @@ body::before{
       <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">Upload your preferred Azan MP3 file. A default Azan will play if none is uploaded.</p>
       <div class="upload-zone" id="azanUploadZone" onclick="document.getElementById('azanInput').click()">
         <svg viewBox="0 0 24 24"><path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z"/></svg>
-        <p>Tap to upload Azan MP3</p>
-        <div class="hint">Supports MP3, WAV, OGG, M4A</div>
+        <p>Tap to upload Azan audio</p>
+        <div class="hint">Supports MP3, M4A, WAV, OGG</div>
       </div>
-      <input type="file" id="azanInput" accept="audio/*" style="display:none" onchange="handleAzanUpload(event)">
+      <input type="file" id="azanInput" accept=".mp3,.m4a,.wav,.ogg,.aac,audio/*" style="display:none" onchange="handleAzanUpload(event)">
       <div id="azanFileInfo" style="display:none"></div>
-      <div style="margin-top:10px;display:flex;gap:8px" id="azanActions" style="display:none">
+      <div style="margin-top:10px;display:none;gap:8px" id="azanActions">
         <button class="btn btn-outline btn-sm" onclick="testAzan()" style="flex:1">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8,5.14V19.14L19,12.14L8,5.14Z"/></svg>
           Preview
