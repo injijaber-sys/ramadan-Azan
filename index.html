@@ -419,6 +419,9 @@ body::before{
       <div id="simStatus" style="display:none;margin-top:8px;padding:10px;border-radius:8px;background:rgba(46,196,182,0.08);font-size:0.8rem;color:var(--teal);text-align:center">
         <div>⏳ Azan will auto-play in: <strong id="simCountdown">30</strong>s</div>
       </div>
+      <div id="audioUnlockMsg" style="margin-top:8px;padding:10px;border-radius:8px;background:rgba(231,76,60,0.08);font-size:0.78rem;color:var(--danger);text-align:center">
+        🔇 Audio locked — tap anywhere on the screen to enable auto-play
+      </div>
     </div>
   </div>
 
@@ -731,16 +734,80 @@ function renderAzanInfo() {
 }
 
 // ===== AUDIO PLAYBACK =====
-// We track the active AudioContext and source so stopAzan() can kill them
-let _activeCtx = null;
-let _activeSource = null;
-let _activeHtmlAudio = null;
-let _manuallyStopped = false;
+// iOS Safari ONLY allows audio.play() from a direct user tap.
+// Trick: we create ONE <audio> element, unlock it on the first user tap
+// by playing a tiny silent clip, then REUSE that same element forever.
+// Once unlocked, .play() works from timers/intervals.
+
+let _audioEl = null;       // the ONE persistent audio element
+let _audioUnlocked = false;
+let _cancelled = false;
+
+// Create the persistent audio element on page load
+function initAudioElement() {
+  _audioEl = document.createElement('audio');
+  _audioEl.id = 'persistentAzan';
+  _audioEl.playsInline = true;
+  _audioEl.preload = 'auto';
+  // Needed for iOS — must be in the DOM
+  _audioEl.style.display = 'none';
+  document.body.appendChild(_audioEl);
+
+  _audioEl.addEventListener('ended', () => {
+    if (!_cancelled) {
+      document.getElementById('azanOverlay').classList.remove('visible');
+    }
+  });
+
+  _audioEl.addEventListener('error', (e) => {
+    if (!_cancelled) {
+      console.warn('Audio error:', e);
+      // If custom audio fails, fall back to generated
+      if (state.customAzanData) {
+        notify('MP3 playback failed — using built-in sound', 'info');
+        playGeneratedAzan();
+      }
+    }
+  });
+}
+
+// Unlock audio on ANY user tap — plays a tiny silent data-uri
+// After this, .play() works from timers on iOS
+function unlockAudio() {
+  if (_audioUnlocked || !_audioEl) return;
+
+  // Tiny silent WAV (44 bytes)
+  const silentWav = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+
+  _audioEl.src = silentWav;
+  const p = _audioEl.play();
+  if (p && p.then) {
+    p.then(() => {
+      _audioUnlocked = true;
+      _audioEl.pause();
+      console.log('Audio unlocked for iOS');
+      updateUnlockStatus();
+    }).catch(() => {
+      // Will try again on next tap
+    });
+  }
+}
+
+function updateUnlockStatus() {
+  const el = document.getElementById('audioUnlockMsg');
+  if (el) {
+    el.style.display = _audioUnlocked ? 'none' : 'block';
+  }
+}
+
+// Listen for ANY user interaction to unlock
+['touchstart', 'touchend', 'click', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, unlockAudio, { once: false, passive: true });
+});
 
 function playAzan(prayerName) {
-  // Stop anything already playing
   stopAzanInternal();
-  _manuallyStopped = false;
+  _cancelled = false;
 
   const overlay = document.getElementById('azanOverlay');
   document.getElementById('azanPrayerName').textContent = prayerName === 'fajr' ? 'أذان الفجر' : 'أذان المغرب';
@@ -754,77 +821,50 @@ function playAzan(prayerName) {
   }
 }
 
-// --- Play user-uploaded MP3/audio via <audio> element ---
+// --- Play user-uploaded MP3 via the persistent <audio> element ---
 function playCustomAzan() {
-  try {
-    const audio = new Audio();
-    audio.volume = state.volume;
+  if (!_audioEl) initAudioElement();
 
-    _activeHtmlAudio = audio;
+  _audioEl.volume = state.volume;
+  _audioEl.src = state.customAzanData;
+  _audioEl.load();
 
-    // Use a flag scoped to this specific playback instance
-    // so that if stop is called, none of the callbacks fire
-    let cancelled = false;
-    _activeHtmlAudio._cancel = () => { cancelled = true; };
-
-    audio.addEventListener('canplaythrough', () => {
-      if (cancelled) return;
-      audio.play().catch(e => {
-        if (cancelled) return;
-        console.warn('Custom audio play blocked:', e);
-        notify('Tap anywhere first, then try again (browser requires interaction)', 'info');
+  const playPromise = _audioEl.play();
+  if (playPromise && playPromise.then) {
+    playPromise.catch(e => {
+      if (_cancelled) return;
+      console.warn('Play failed:', e);
+      // If not unlocked yet, show a message
+      if (!_audioUnlocked) {
+        notify('Tap the screen once to enable audio, then try again', 'info');
         document.getElementById('azanOverlay').classList.remove('visible');
-      });
-    }, { once: true });
-
-    audio.addEventListener('error', (e) => {
-      if (cancelled) return;
-      console.warn('Custom audio load error:', e);
-      notify('Could not play custom Azan — falling back to built-in', 'info');
-      playGeneratedAzan();
-    }, { once: true });
-
-    audio.addEventListener('ended', () => {
-      if (cancelled) return;
-      document.getElementById('azanOverlay').classList.remove('visible');
-    }, { once: true });
-
-    audio.src = state.customAzanData;
-    audio.load();
-  } catch (e) {
-    if (_manuallyStopped) return;
-    console.warn('Custom audio setup error:', e);
-    playGeneratedAzan();
+      } else {
+        // Unlocked but still failed — try generated
+        playGeneratedAzan();
+      }
+    });
   }
 }
 
-// --- Generate a beautiful Azan-like melodic call using Web Audio API ---
-// This is a synthesized "call to prayer" melody in Hijaz/Bayati scale
+// --- Generate a melodic Azan call using Web Audio API (fallback) ---
+let _activeCtx = null;
+
 function playGeneratedAzan() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     _activeCtx = ctx;
 
-    // Hijaz-ish scale frequencies (Middle Eastern melodic feel)
-    // D4, Eb4, F#4, G4, A4, Bb4, C5, D5
-    const scale = [293.66, 311.13, 369.99, 392.00, 440.00, 466.16, 523.25, 587.33];
+    // If the context is suspended (iOS), try to resume it
+    if (ctx.state === 'suspended') ctx.resume();
 
-    // Melody pattern: note index in scale, duration in seconds
-    // Simulates the rising and falling phrases of an Azan
+    const scale = [293.66, 311.13, 369.99, 392.00, 440.00, 466.16, 523.25, 587.33];
     const melody = [
-      // Allahu Akbar phrase 1
       [4, 1.2], [5, 0.8], [4, 1.5], [3, 0.6], [4, 1.8], [-1, 0.6],
-      // Allahu Akbar phrase 2
       [4, 1.0], [5, 1.0], [6, 0.8], [5, 0.6], [4, 2.0], [-1, 0.8],
-      // Ashhadu phrase (rising)
       [3, 0.8], [4, 0.8], [5, 1.2], [6, 1.0], [7, 1.5], [-1, 0.5],
-      // Descending phrase
       [7, 0.6], [6, 0.8], [5, 1.0], [4, 0.8], [3, 1.5], [-1, 0.6],
-      // Hayya phrase (urgent, higher)
       [5, 0.6], [6, 0.8], [7, 1.0], [6, 0.6], [5, 0.8], [4, 1.5], [-1, 0.8],
-      // Final Allahu Akbar (settling down)
       [4, 1.2], [3, 0.8], [2, 0.6], [1, 0.6], [0, 2.5], [-1, 0.5],
-      // La ilaha illa Allah (final, peaceful)
       [0, 0.8], [1, 0.6], [2, 0.8], [3, 1.0], [4, 1.0], [3, 2.0],
     ];
 
@@ -832,7 +872,6 @@ function playGeneratedAzan() {
     masterGain.gain.value = state.volume * 0.6;
     masterGain.connect(ctx.destination);
 
-    // Add a gentle reverb-like delay
     const delay = ctx.createDelay(0.5);
     delay.delayTime.value = 0.15;
     const delayGain = ctx.createGain();
@@ -844,69 +883,36 @@ function playGeneratedAzan() {
     let totalDuration = 0;
 
     melody.forEach(([noteIdx, dur]) => {
-      if (noteIdx === -1) {
-        // Rest / silence
-        time += dur;
-        totalDuration += dur;
-        return;
-      }
-
+      if (noteIdx === -1) { time += dur; totalDuration += dur; return; }
       const freq = scale[noteIdx];
 
-      // Main tone (sine — pure, voice-like)
-      const osc1 = ctx.createOscillator();
-      osc1.type = 'sine';
-      osc1.frequency.value = freq;
+      const osc1 = ctx.createOscillator(); osc1.type = 'sine'; osc1.frequency.value = freq;
+      const osc2 = ctx.createOscillator(); osc2.type = 'sine'; osc2.frequency.value = freq * 2.0;
+      const vibrato = ctx.createOscillator(); vibrato.type = 'sine'; vibrato.frequency.value = 5.5;
+      const vibratoGain = ctx.createGain(); vibratoGain.gain.value = freq * 0.008;
+      vibrato.connect(vibratoGain); vibratoGain.connect(osc1.frequency);
 
-      // Second harmonic for richness
-      const osc2 = ctx.createOscillator();
-      osc2.type = 'sine';
-      osc2.frequency.value = freq * 2.0;
-
-      // Slight vibrato for vocal quality
-      const vibrato = ctx.createOscillator();
-      vibrato.type = 'sine';
-      vibrato.frequency.value = 5.5; // vibrato speed
-      const vibratoGain = ctx.createGain();
-      vibratoGain.gain.value = freq * 0.008; // subtle pitch wobble
-      vibrato.connect(vibratoGain);
-      vibratoGain.connect(osc1.frequency);
-
-      // Envelope
       const env = ctx.createGain();
       env.gain.setValueAtTime(0, time);
-      env.gain.linearRampToValueAtTime(0.35, time + 0.08);  // attack
-      env.gain.linearRampToValueAtTime(0.28, time + dur * 0.3); // sustain
-      env.gain.linearRampToValueAtTime(0, time + dur - 0.05); // release
+      env.gain.linearRampToValueAtTime(0.35, time + 0.08);
+      env.gain.linearRampToValueAtTime(0.28, time + dur * 0.3);
+      env.gain.linearRampToValueAtTime(0, time + dur - 0.05);
 
       const env2 = ctx.createGain();
       env2.gain.setValueAtTime(0, time);
       env2.gain.linearRampToValueAtTime(0.08, time + 0.1);
       env2.gain.linearRampToValueAtTime(0, time + dur - 0.05);
 
-      osc1.connect(env);
-      osc2.connect(env2);
-      env.connect(masterGain);
-      env.connect(delay);
-      env2.connect(masterGain);
-
-      osc1.start(time);
-      osc2.start(time);
-      vibrato.start(time);
-      osc1.stop(time + dur);
-      osc2.stop(time + dur);
-      vibrato.stop(time + dur);
-
-      time += dur;
-      totalDuration += dur;
+      osc1.connect(env); osc2.connect(env2);
+      env.connect(masterGain); env.connect(delay); env2.connect(masterGain);
+      osc1.start(time); osc2.start(time); vibrato.start(time);
+      osc1.stop(time + dur); osc2.stop(time + dur); vibrato.stop(time + dur);
+      time += dur; totalDuration += dur;
     });
 
-    // Fade out master at the end
     masterGain.gain.setValueAtTime(state.volume * 0.6, time - 0.5);
     masterGain.gain.linearRampToValueAtTime(0, time + 1.0);
 
-    // Close overlay when done
-    _activeSource = { stop: () => {} }; // placeholder
     setTimeout(() => {
       if (_activeCtx === ctx) {
         document.getElementById('azanOverlay').classList.remove('visible');
@@ -923,19 +929,15 @@ function playGeneratedAzan() {
 }
 
 function stopAzanInternal() {
-  _manuallyStopped = true;
-  if (_activeHtmlAudio) {
-    // Cancel all pending callbacks FIRST
-    if (_activeHtmlAudio._cancel) _activeHtmlAudio._cancel();
-    // Just pause — do NOT clear src or call load(), that triggers the error event
-    try { _activeHtmlAudio.pause(); } catch(e) {}
-    _activeHtmlAudio = null;
+  _cancelled = true;
+  // Stop the persistent audio element (don't destroy it)
+  if (_audioEl) {
+    try { _audioEl.pause(); _audioEl.currentTime = 0; } catch(e) {}
   }
   if (_activeCtx) {
     try { _activeCtx.close(); } catch(e) {}
     _activeCtx = null;
   }
-  _activeSource = null;
 }
 
 function stopAzan() {
@@ -1239,6 +1241,7 @@ document.addEventListener('DOMContentLoaded', () => {
   
   createStars();
   loadState();
+  initAudioElement();
   
   // Restore calendar fullDate objects from serialized state
   if (state.calendar) {
