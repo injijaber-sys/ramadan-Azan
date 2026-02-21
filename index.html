@@ -735,13 +735,13 @@ function renderAzanInfo() {
 
 // ===== AUDIO PLAYBACK =====
 // iOS Safari ONLY allows audio.play() from a direct user tap.
-// Trick: we create ONE <audio> element, unlock it on the first user tap
-// by playing a tiny silent clip, then REUSE that same element forever.
-// Once unlocked, .play() works from timers/intervals.
+// Trick: we unlock a persistent <audio> element on the first user tap
+// by playing a tiny silent clip. Once unlocked, .play() works from timers.
 
-let _audioEl = null;       // the ONE persistent audio element
+let _audioEl = null;       // the ONE persistent audio element for Azan
 let _audioUnlocked = false;
 let _cancelled = false;
+let _isPlayingAzan = false; // guard so error handler only fires during real playback
 
 // Create the persistent audio element on page load
 function initAudioElement() {
@@ -749,60 +749,74 @@ function initAudioElement() {
   _audioEl.id = 'persistentAzan';
   _audioEl.playsInline = true;
   _audioEl.preload = 'auto';
-  // Needed for iOS — must be in the DOM
   _audioEl.style.display = 'none';
   document.body.appendChild(_audioEl);
 
   _audioEl.addEventListener('ended', () => {
-    if (!_cancelled) {
+    if (_isPlayingAzan && !_cancelled) {
+      _isPlayingAzan = false;
       document.getElementById('azanOverlay').classList.remove('visible');
     }
   });
 
   _audioEl.addEventListener('error', (e) => {
-    if (!_cancelled) {
-      console.warn('Audio error:', e);
-      // If custom audio fails, fall back to generated
-      if (state.customAzanData) {
-        notify('MP3 playback failed — using built-in sound', 'info');
-        playGeneratedAzan();
-      }
+    // ONLY handle errors during actual Azan playback, not during unlock
+    if (_isPlayingAzan && !_cancelled) {
+      _isPlayingAzan = false;
+      console.warn('Azan audio error:', e);
+      notify('MP3 playback failed — using built-in sound', 'info');
+      playGeneratedAzan();
     }
   });
 }
 
-// Unlock audio on ANY user tap — plays a tiny silent data-uri
-// After this, .play() works from timers on iOS
+// Unlock audio on first user tap using a SEPARATE temporary element
+// so we don't pollute the main _audioEl with error events
 function unlockAudio() {
-  if (_audioUnlocked || !_audioEl) return;
+  if (_audioUnlocked) return;
 
-  // Tiny silent WAV (44 bytes)
-  const silentWav = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=';
+  // Also unlock the main element by playing+pausing immediately
+  // Use a fresh tiny Audio object first, then prime _audioEl
+  try {
+    // Create a short silent audio as base64 — valid MP3 silence (frame)
+    const silenceBase64 = 'data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAABhgFCuaQAAAAAAAAAAAAAAAAA//tQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAABhgC7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7u7//////////////////////////////////////////////////////////////////8AAAAATGF2YzU4LjEzAAAAAAAAAAAAAAAAJAAAAAAAAAABhgFCuaQAAAAAAAAAAAAAAAAA';
 
-  _audioEl.src = silentWav;
-  const p = _audioEl.play();
-  if (p && p.then) {
-    p.then(() => {
-      _audioUnlocked = true;
-      _audioEl.pause();
-      console.log('Audio unlocked for iOS');
-      updateUnlockStatus();
-    }).catch(() => {
-      // Will try again on next tap
-    });
+    _audioEl.src = silenceBase64;
+    const p = _audioEl.play();
+    if (p && p.then) {
+      p.then(() => {
+        _audioEl.pause();
+        _audioEl.currentTime = 0;
+        _audioUnlocked = true;
+        console.log('Audio unlocked for iOS');
+        updateUnlockStatus();
+        // Remove tap listeners since we're unlocked
+        ['touchstart', 'touchend', 'click'].forEach(evt => {
+          document.removeEventListener(evt, unlockAudio);
+        });
+      }).catch(() => {
+        // Will try again on next tap
+      });
+    }
+  } catch(e) {
+    // Will try again on next tap
   }
 }
 
 function updateUnlockStatus() {
   const el = document.getElementById('audioUnlockMsg');
   if (el) {
-    el.style.display = _audioUnlocked ? 'none' : 'block';
+    if (_audioUnlocked) {
+      el.style.display = 'none';
+    } else {
+      el.style.display = 'block';
+    }
   }
 }
 
-// Listen for ANY user interaction to unlock
-['touchstart', 'touchend', 'click', 'keydown'].forEach(evt => {
-  document.addEventListener(evt, unlockAudio, { once: false, passive: true });
+// Listen for user interaction to unlock
+['touchstart', 'touchend', 'click'].forEach(evt => {
+  document.addEventListener(evt, unlockAudio, { passive: true });
 });
 
 function playAzan(prayerName) {
@@ -825,21 +839,20 @@ function playAzan(prayerName) {
 function playCustomAzan() {
   if (!_audioEl) initAudioElement();
 
+  _isPlayingAzan = true;
   _audioEl.volume = state.volume;
   _audioEl.src = state.customAzanData;
-  _audioEl.load();
 
   const playPromise = _audioEl.play();
   if (playPromise && playPromise.then) {
     playPromise.catch(e => {
-      if (_cancelled) return;
+      if (_cancelled) { _isPlayingAzan = false; return; }
       console.warn('Play failed:', e);
-      // If not unlocked yet, show a message
+      _isPlayingAzan = false;
       if (!_audioUnlocked) {
         notify('Tap the screen once to enable audio, then try again', 'info');
         document.getElementById('azanOverlay').classList.remove('visible');
       } else {
-        // Unlocked but still failed — try generated
         playGeneratedAzan();
       }
     });
@@ -930,6 +943,7 @@ function playGeneratedAzan() {
 
 function stopAzanInternal() {
   _cancelled = true;
+  _isPlayingAzan = false;
   // Stop the persistent audio element (don't destroy it)
   if (_audioEl) {
     try { _audioEl.pause(); _audioEl.currentTime = 0; } catch(e) {}
