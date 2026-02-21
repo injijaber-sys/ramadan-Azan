@@ -402,7 +402,7 @@ body::before{
         <svg viewBox="0 0 24 24"><path d="M12,1A3,3 0 0,1 15,4V8A3,3 0 0,1 9,8V4A3,3 0 0,1 12,1M12,14C8.13,14 5,12.21 5,10V8H19V10C19,12.21 15.87,14 12,14M12,16C16.42,16 20,17.79 20,20V22H4V20C4,17.79 7.58,16 12,16Z"/></svg>
         Azan Status
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
         <div>
           <span class="status" id="azanStatus"><span>Inactive</span></span>
         </div>
@@ -410,6 +410,14 @@ body::before{
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M8,5.14V19.14L19,12.14L8,5.14Z"/></svg>
           Test Azan
         </button>
+      </div>
+      <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:12px" id="azanSourceInfo">Audio: Built-in synthesized tone</div>
+      <button class="btn btn-outline btn-sm" onclick="simulatePrayerTime()" id="simBtn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12.5,7V12.25L17,14.92L16.25,16.15L11,13V7H12.5Z"/></svg>
+        Simulate — Azan in 30 seconds
+      </button>
+      <div id="simStatus" style="display:none;margin-top:8px;padding:10px;border-radius:8px;background:rgba(46,196,182,0.08);font-size:0.8rem;color:var(--teal);text-align:center">
+        <div>⏳ Azan will auto-play in: <strong id="simCountdown">30</strong>s</div>
       </div>
     </div>
   </div>
@@ -546,7 +554,6 @@ let state = {
 let audioContext = null;
 let countdownInterval = null;
 let checkerInterval = null;
-let lastFiredKey = null; // prevent double-firing
 
 // ===== PERSISTENCE =====
 function saveState() {
@@ -940,6 +947,46 @@ function testAzan() {
   playAzan('fajr');
 }
 
+// ===== SIMULATION: test auto-trigger in 30 seconds =====
+let simTimer = null;
+let simCountdownInterval = null;
+
+function simulatePrayerTime() {
+  // Clear any existing simulation
+  if (simTimer) { clearTimeout(simTimer); simTimer = null; }
+  if (simCountdownInterval) { clearInterval(simCountdownInterval); simCountdownInterval = null; }
+  
+  const btn = document.getElementById('simBtn');
+  const statusEl = document.getElementById('simStatus');
+  const countdownEl = document.getElementById('simCountdown');
+  
+  btn.style.display = 'none';
+  statusEl.style.display = 'block';
+  
+  let secondsLeft = 30;
+  countdownEl.textContent = secondsLeft;
+  
+  simCountdownInterval = setInterval(() => {
+    secondsLeft--;
+    countdownEl.textContent = secondsLeft;
+    if (secondsLeft <= 0) {
+      clearInterval(simCountdownInterval);
+      simCountdownInterval = null;
+    }
+  }, 1000);
+  
+  // Fire azan after 30 seconds — this goes through the SAME path as the real checker
+  simTimer = setTimeout(() => {
+    simTimer = null;
+    statusEl.style.display = 'none';
+    btn.style.display = 'flex';
+    playAzan('maghrib');
+    notify('Simulation: Maghrib Azan triggered automatically!', 'success');
+  }, 30000);
+  
+  notify('Azan will auto-play in 30 seconds — just wait!', 'info');
+}
+
 // ===== SETTINGS =====
 function toggleSetting(type) {
   state.azanEnabled[type] = !state.azanEnabled[type];
@@ -1029,40 +1076,60 @@ function startChecker() {
   
   countdownInterval = setInterval(updateCountdown, 1000);
   
-  // Check every 30 seconds if it's time to play Azan
-  checkerInterval = setInterval(() => {
-    const entry = getTodayEntry();
-    if (!entry) return;
-    
-    const now = new Date();
-    const nowMins = now.getHours() * 60 + now.getMinutes();
-    const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
-    
-    const fajrMins = parseTimeToMinutes(entry.fajr);
-    const maghribMins = parseTimeToMinutes(entry.maghrib);
-    
-    // Fire if within 1 minute of prayer time
-    if (state.azanEnabled.fajr && Math.abs(nowMins - fajrMins) === 0) {
-      const key = todayKey + '-fajr';
-      if (lastFiredKey !== key) {
-        lastFiredKey = key;
-        playAzan('fajr');
-        updateStatus(true);
-      }
-    }
-    
-    if (state.azanEnabled.maghrib && Math.abs(nowMins - maghribMins) === 0) {
-      const key = todayKey + '-maghrib';
-      if (lastFiredKey !== key) {
-        lastFiredKey = key;
-        playAzan('maghrib');
-        updateStatus(true);
-      }
-    }
-  }, 15000); // check every 15 seconds
+  // Check every 5 seconds if it's time to play Azan
+  checkerInterval = setInterval(checkAndFireAzan, 5000);
+  
+  // Also check immediately
+  checkAndFireAzan();
   
   updateStatus(state.azanEnabled.fajr || state.azanEnabled.maghrib);
   updateCountdown();
+}
+
+function checkAndFireAzan() {
+  const entry = getTodayEntry();
+  if (!entry) return;
+  
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const todayStr = now.toDateString(); // e.g. "Wed Feb 18 2026"
+  
+  // Load which prayers already fired today
+  let firedToday = {};
+  try {
+    const stored = localStorage.getItem('azan_fired_today');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (parsed.date === todayStr) firedToday = parsed;
+    }
+  } catch(e) {}
+  
+  const fajrMins = parseTimeToMinutes(entry.fajr);
+  const maghribMins = parseTimeToMinutes(entry.maghrib);
+  
+  // Fire if current time is within 0-2 minutes AFTER the prayer time
+  // This gives a 2-minute window to catch it even if checks are delayed
+  if (state.azanEnabled.fajr && !firedToday.fajr) {
+    const diff = nowMins - fajrMins;
+    if (diff >= 0 && diff <= 2) {
+      firedToday.date = todayStr;
+      firedToday.fajr = true;
+      localStorage.setItem('azan_fired_today', JSON.stringify(firedToday));
+      playAzan('fajr');
+      updateStatus(true);
+    }
+  }
+  
+  if (state.azanEnabled.maghrib && !firedToday.maghrib) {
+    const diff = nowMins - maghribMins;
+    if (diff >= 0 && diff <= 2) {
+      firedToday.date = todayStr;
+      firedToday.maghrib = true;
+      localStorage.setItem('azan_fired_today', JSON.stringify(firedToday));
+      playAzan('maghrib');
+      updateStatus(true);
+    }
+  }
 }
 
 function updateStatus(active) {
@@ -1135,6 +1202,14 @@ function renderApp() {
   // Azan info
   renderAzanInfo();
   
+  // Audio source info on home screen
+  const srcInfo = document.getElementById('azanSourceInfo');
+  if (srcInfo) {
+    srcInfo.textContent = state.customAzanName 
+      ? '🎵 Audio: ' + state.customAzanName 
+      : 'Audio: Built-in synthesized tone (upload your own in Settings)';
+  }
+  
   // Location subtitle
   if (state.calendar.length > 0) {
     document.querySelector('.header .subtitle').textContent = 'Franklin, Tennessee • Ramadan ' + (state.calendar[0]?.year || '2026');
@@ -1203,10 +1278,23 @@ document.addEventListener('DOMContentLoaded', () => {
   requestWakeLock();
 });
 
-// Re-acquire wake lock when page becomes visible again
+// Re-acquire wake lock and re-check prayer times when page becomes visible again
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') {
     requestWakeLock();
+    // Immediately check if we missed a prayer time while backgrounded
+    if (state.calendar) {
+      checkAndFireAzan();
+      updateCountdown();
+    }
+  }
+});
+
+// Also check on window focus (catches more cases on desktop)
+window.addEventListener('focus', () => {
+  if (state.calendar) {
+    checkAndFireAzan();
+    updateCountdown();
   }
 });
 </script>
