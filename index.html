@@ -501,6 +501,24 @@ body::before{
       </div>
     </div>
 
+    <!-- iPhone Alarms -->
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24"><path d="M12,20A7,7 0 0,1 5,13A7,7 0 0,1 12,6A7,7 0 0,1 19,13A7,7 0 0,1 12,20M12,4A9,9 0 0,0 3,13A9,9 0 0,0 12,22A9,9 0 0,0 21,13A9,9 0 0,0 12,4M12.5,8H11V14L15.75,16.85L16.5,15.62L12.5,13.25V8M7.88,3.39L6.6,1.86L2,5.71L3.29,7.24L7.88,3.39M22,5.72L17.4,1.86L16.11,3.39L20.71,7.25L22,5.72Z"/></svg>
+        iPhone Alarms (Works from Sleep!)
+      </div>
+      <p style="font-size:0.8rem;color:var(--text-secondary);margin-bottom:12px;line-height:1.6">
+        Web apps can't play audio when your iPhone is asleep. Download this calendar file to add <strong style="color:var(--gold)">Fajr & Maghrib alerts</strong> to your iPhone Calendar — these will ring even when your phone is locked.
+      </p>
+      <button class="btn btn-primary" onclick="generateICS()" id="icsBtn">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19,19H5V8H19M16,1V3H8V1H6V3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3H18V1M7,10H9V12H7V10M11,10H13V12H11V10M15,10H17V12H15V10Z"/></svg>
+        Download Azan Alerts Calendar
+      </button>
+      <p style="font-size:0.7rem;color:var(--text-muted);margin-top:10px;line-height:1.5">
+        After downloading, tap the file → "Add All Events". You'll get 60 alerts (Fajr + Maghrib × 30 days) with alarm sounds.
+      </p>
+    </div>
+
     <!-- Calendar Management -->
     <div class="card">
       <div class="card-title">
@@ -1009,6 +1027,120 @@ function toggleSetting(type) {
   const btn = document.getElementById('toggle' + type.charAt(0).toUpperCase() + type.slice(1));
   btn.classList.toggle('on', state.azanEnabled[type]);
   saveState();
+}
+
+// ===== ICS CALENDAR EXPORT (iPhone alarms that work from sleep) =====
+function generateICS() {
+  if (!state.calendar || state.calendar.length === 0) {
+    notify('Upload a calendar first', 'error');
+    return;
+  }
+
+  // Determine timezone - Franklin TN is America/Chicago
+  // Dates before Mar 8 are CST (UTC-6), Mar 8+ are CDT (UTC-5)
+  const dstStartDate = new Date(2026, 2, 8); // Mar 8, 2026
+
+  let ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Ramadan Azan App//EN',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:Ramadan Azan 2026',
+    'X-WR-TIMEZONE:America/Chicago',
+  ];
+
+  state.calendar.forEach(entry => {
+    const entryDate = new Date(entry.fullDate);
+    const isDST = entryDate >= dstStartDate;
+    const utcOffset = isDST ? 5 : 6; // CDT = UTC-5, CST = UTC-6
+
+    // Parse Fajr time
+    const fajrMatch = entry.fajr.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    const maghribMatch = entry.maghrib.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+
+    if (fajrMatch && maghribMatch) {
+      // Fajr
+      let fH = parseInt(fajrMatch[1]);
+      const fM = parseInt(fajrMatch[2]);
+      if (fajrMatch[3].toUpperCase() === 'PM' && fH !== 12) fH += 12;
+      if (fajrMatch[3].toUpperCase() === 'AM' && fH === 12) fH = 0;
+
+      // Maghrib
+      let mH = parseInt(maghribMatch[1]);
+      const mM = parseInt(maghribMatch[2]);
+      if (maghribMatch[3].toUpperCase() === 'PM' && mH !== 12) mH += 12;
+      if (maghribMatch[3].toUpperCase() === 'AM' && mH === 12) mH = 0;
+
+      const year = entryDate.getFullYear();
+      const month = String(entryDate.getMonth() + 1).padStart(2, '0');
+      const day = String(entryDate.getDate()).padStart(2, '0');
+      const dateStr = `${year}${month}${day}`;
+
+      // Convert local times to UTC for ICS
+      const fajrUTC_H = (fH + utcOffset) % 24;
+      const maghribUTC_H = (mH + utcOffset) % 24;
+
+      const uid1 = `fajr-${dateStr}@ramadan-azan`;
+      const uid2 = `maghrib-${dateStr}@ramadan-azan`;
+
+      const fajrStart = `${dateStr}T${String(fajrUTC_H).padStart(2,'0')}${String(fM).padStart(2,'0')}00Z`;
+      const fajrEnd = `${dateStr}T${String(fajrUTC_H).padStart(2,'0')}${String((fM + 5) % 60).padStart(2,'0')}00Z`;
+
+      const maghribStart = `${dateStr}T${String(maghribUTC_H).padStart(2,'0')}${String(mM).padStart(2,'0')}00Z`;
+      const maghribEnd = `${dateStr}T${String(maghribUTC_H).padStart(2,'0')}${String((mM + 5) % 60).padStart(2,'0')}00Z`;
+
+      // Fajr event
+      ics.push('BEGIN:VEVENT');
+      ics.push(`UID:${uid1}`);
+      ics.push(`DTSTART:${fajrStart}`);
+      ics.push(`DTEND:${fajrEnd}`);
+      ics.push(`SUMMARY:🌙 Fajr Azan — Suhoor Ends`);
+      ics.push(`DESCRIPTION:${entry.hijriDate} — Fajr ${entry.fajr} — Suhoor ends now. Ramadan Mubarak!`);
+      ics.push('BEGIN:VALARM');
+      ics.push('TRIGGER:PT0S');
+      ics.push('ACTION:AUDIO');
+      ics.push('END:VALARM');
+      ics.push('BEGIN:VALARM');
+      ics.push('TRIGGER:-PT1M');
+      ics.push('ACTION:DISPLAY');
+      ics.push('DESCRIPTION:Fajr Azan in 1 minute — finish Suhoor!');
+      ics.push('END:VALARM');
+      ics.push('END:VEVENT');
+
+      // Maghrib event
+      ics.push('BEGIN:VEVENT');
+      ics.push(`UID:${uid2}`);
+      ics.push(`DTSTART:${maghribStart}`);
+      ics.push(`DTEND:${maghribEnd}`);
+      ics.push(`SUMMARY:🌅 Maghrib Azan — Iftar Time!`);
+      ics.push(`DESCRIPTION:${entry.hijriDate} — Maghrib ${entry.maghrib} — Time to break your fast! Ramadan Mubarak!`);
+      ics.push('BEGIN:VALARM');
+      ics.push('TRIGGER:PT0S');
+      ics.push('ACTION:AUDIO');
+      ics.push('END:VALARM');
+      ics.push('BEGIN:VALARM');
+      ics.push('TRIGGER:-PT5M');
+      ics.push('ACTION:DISPLAY');
+      ics.push('DESCRIPTION:Maghrib Azan in 5 minutes — get ready for Iftar!');
+      ics.push('END:VALARM');
+      ics.push('END:VEVENT');
+    }
+  });
+
+  ics.push('END:VCALENDAR');
+
+  const blob = new Blob([ics.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'Ramadan_Azan_2026.ics';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  notify('Calendar downloaded! Open it to add alerts to your iPhone.', 'success');
 }
 
 function setVolume(val) {
